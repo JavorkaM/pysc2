@@ -78,8 +78,44 @@ class RawAgent(base_agent.BaseAgent):
             y_offset = random.randint(-4, 4)
             return actions.RAW_FUNCTIONS.Attack_pt(
                 "now", zealot.tag, (attack_xy[0] + x_offset, attack_xy[1] + y_offset))
+        
+        if len(zealots) > 0:
+            enemy_base_top_left = (38, 44)
+            enemy_base_top_right = (38, 21)
+            enemy_base_bottom_left = (21, 44)
+            enemy_base_bottom_right = (21, 21)
 
-        return actions.RAW_FUNCTIONS.no_op()
+            possible_enemy_bases = [enemy_base_top_left, enemy_base_top_right, 
+                                    enemy_base_bottom_left, enemy_base_bottom_right]
+            
+            # Remove our base location from possible enemy bases
+            our_base = enemy_base_bottom_right if self.base_top_left else enemy_base_top_left
+            possible_enemy_bases.remove(our_base)
+
+            # Choose a random base location to attack
+            target = random.choice(possible_enemy_bases)
+
+            return actions.RAW_FUNCTIONS.Attack_minimap("now", [z.tag for z in zealots], target)
+        
+        # Check if enemy units are near our base
+        enemy_units = self.get_enemy_units_by_type(obs, units.Protoss.Zealot)  # You might want to expand this to include other unit types
+        probes = self.get_my_units_by_type(obs, units.Protoss.Probe)
+        
+        if len(enemy_units) > 0 and len(probes) > 0:
+            enemy_near_base = False
+            for enemy in enemy_units:
+                for probe in probes:
+                    if self.get_distance(enemy.x, enemy.y, probe.x, probe.y) < 20:  # Adjust this distance as needed
+                        enemy_near_base = True
+                        break
+                if enemy_near_base:
+                    break
+            
+            if enemy_near_base and len(zealots) > 0:
+                # Recall zealots to defend
+                defend_xy = (22, 22) if self.base_top_left else (35, 40)  # Adjust these coordinates as needed
+                return actions.RAW_FUNCTIONS.Attack_pt(
+                    "now", [z.tag for z in zealots], defend_xy)
 
 
 def main(unused_argv):
